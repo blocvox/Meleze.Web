@@ -15,6 +15,8 @@ namespace Meleze.Web.Razor
     {
         private MinifyHtmlMinifier _minifier;
 
+        private static bool? _isAjaxAvailable;
+
         public MinifyHtmlWebRazorHostFactory()
         {
             // Javascript minification
@@ -37,45 +39,42 @@ namespace Meleze.Web.Razor
             //};
 
             // We initialize the JS and CSS minification by reflexion to remove a DLL dependency
-            try
-            {
-                var ajaxmin = Assembly.Load("ajaxmin");
-                if (ajaxmin != null)
-                {
-                    var scriptCruncherType = ajaxmin.GetType("Microsoft.Ajax.Utilities.ScriptCruncher");
+            if (!_isAjaxAvailable.HasValue || _isAjaxAvailable.Value) {
+                try {
+                    var ajaxmin = Assembly.Load("ajaxmin");
+                    if (ajaxmin != null) {
+                        var scriptCruncherType = ajaxmin.GetType("Microsoft.Ajax.Utilities.ScriptCruncher");
 
-                    // JS
-                    var codeSettingsType = ajaxmin.GetType("Microsoft.Ajax.Utilities.CodeSettings");
-                    var localRenamingProperty = codeSettingsType.GetProperty("LocalRenaming");
-                    var crunchMethod = scriptCruncherType.GetMethod("Crunch", new Type[] { typeof(string), codeSettingsType });
+                        // JS
+                        var codeSettingsType = ajaxmin.GetType("Microsoft.Ajax.Utilities.CodeSettings");
+                        var localRenamingProperty = codeSettingsType.GetProperty("LocalRenaming");
+                        var crunchMethod = scriptCruncherType.GetMethod("Crunch", new Type[] { typeof(string), codeSettingsType });
 
-                    var sc = scriptCruncherType.GetConstructor(Type.EmptyTypes).Invoke(null);
-                    var scsettings = codeSettingsType.GetConstructor(Type.EmptyTypes).Invoke(null);
-                    localRenamingProperty.SetValue(scsettings, 1, null);
+                        var sc = scriptCruncherType.GetConstructor(Type.EmptyTypes).Invoke(null);
+                        var scsettings = codeSettingsType.GetConstructor(Type.EmptyTypes).Invoke(null);
+                        localRenamingProperty.SetValue(scsettings, 1, null);
 
-                    minifyJS = delegate(string code)
-                    {
-                        var minifiedCode = (string)crunchMethod.Invoke(sc, new object[] { code, scsettings });
-                        return minifiedCode;
-                    };
+                        minifyJS = delegate(string code) {
+                            var minifiedCode = (string)crunchMethod.Invoke(sc, new object[] { code, scsettings });
+                            return minifiedCode;
+                        };
 
-                    // CSS
-                    var cssSettingsType = ajaxmin.GetType("Microsoft.Ajax.Utilities.CssSettings");
-                    var commentModeProperty = cssSettingsType.GetProperty("CommentMode");
-                    var minifyStyleSheetMethod = scriptCruncherType.GetMethod("MinifyStyleSheet", new Type[] { typeof(string), cssSettingsType });
+                        // CSS
+                        var cssSettingsType = ajaxmin.GetType("Microsoft.Ajax.Utilities.CssSettings");
+                        var commentModeProperty = cssSettingsType.GetProperty("CommentMode");
+                        var minifyStyleSheetMethod = scriptCruncherType.GetMethod("MinifyStyleSheet", new Type[] { typeof(string), cssSettingsType });
 
-                    var scsettings2 = cssSettingsType.GetConstructor(Type.EmptyTypes).Invoke(null);
-                    commentModeProperty.SetValue(scsettings2, 2, null);
+                        var scsettings2 = cssSettingsType.GetConstructor(Type.EmptyTypes).Invoke(null);
+                        commentModeProperty.SetValue(scsettings2, 2, null);
 
-                    minifyCSS = delegate(string code)
-                    {
-                        var minifiedCode = (string)minifyStyleSheetMethod.Invoke(sc, new object[] { code, scsettings2 });
-                        return minifiedCode;
-                    };
+                        minifyCSS = delegate(string code) {
+                            var minifiedCode = (string)minifyStyleSheetMethod.Invoke(sc, new object[] { code, scsettings2 });
+                            return minifiedCode;
+                        };
+                    }
+                } catch {
+                    _isAjaxAvailable = false;
                 }
-            }
-            catch
-            {
             }
 
             var confAggressive = ConfigurationManager.AppSettings["meleze-minifier:Aggressive"];
