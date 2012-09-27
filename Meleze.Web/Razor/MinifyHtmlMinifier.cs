@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Meleze.Web.Razor
 {
@@ -20,7 +21,7 @@ namespace Meleze.Web.Razor
         private static string[] _blockElementsCloseStarts;
         static MinifyHtmlMinifier()
         {
-            var blockElements = new string[] { 
+            var blockElements = new string[] {
             "article", "aside", "div", "dt", "caption", "footer", "form", "header", "hgroup", "html", "map", "nav", "section",
             "body", "p", "dl", "multicol", "dd", "blockquote", "figure", "address", "center",
             "title", "meta", "link", "html", "head", "body", "script", "br", "!DOCTYPE",
@@ -145,8 +146,7 @@ namespace Meleze.Web.Razor
         /// <param name="content"></param>
         /// <param name="builder"></param>
         /// <returns></returns>
-        private static string MinifySafelyHTML(string content, StringBuilder builder, bool previousIsWhiteSpace)
-        {
+        private static string MinifySafelyHTML(string content, StringBuilder builder, bool previousIsWhiteSpace) {
             builder.Clear();
             var lines = content.Split(_lineSeparators, StringSplitOptions.RemoveEmptyEntries);
             for (int i = 0; i < lines.Length; i++)
@@ -161,13 +161,13 @@ namespace Meleze.Web.Razor
                 {
                     builder.Append(' ');
                 }
-                builder.Append(trimmedLine);
-                previousIsWhiteSpace = false;
+                builder.Append(Regex.Replace(trimmedLine,@"\s+"," ")); // replace multiple spaces with a single space
+
                 var endsWithWhiteSpace = char.IsWhiteSpace(line[line.Length - 1]) && (trimmedLine[trimmedLine.Length - 1] != '>');
                 var hasEndOfLine = (i < lines.Length - 1) || (_lineSeparators.Any(s => s == content[content.Length - 1]));
                 if (hasEndOfLine)
                 {
-                    builder.Append('\n');
+                    builder.Append(' '); // this is a change to the original meleze.web logic which has '\n'
                 }
                 else if (endsWithWhiteSpace)
                 {
@@ -176,8 +176,7 @@ namespace Meleze.Web.Razor
                 previousIsWhiteSpace = hasEndOfLine || endsWithWhiteSpace;
             }
 
-            content = builder.ToString();
-            return content;
+            return builder.ToString();
         }
 
         /// <summary>
@@ -190,6 +189,7 @@ namespace Meleze.Web.Razor
         /// <returns></returns>
         private static string MinifyAggressivelyHTML(string content, StringBuilder builder, bool previousTokenEndsWithBlockElement)
         {
+            throw new NotSupportedException("This functionality removed. Use non-aggressive.");
             builder.Clear();
             var tokens = content.Split(_whiteSpaceSeparators, StringSplitOptions.RemoveEmptyEntries);
             previousTokenEndsWithBlockElement |= (content.Length > 0) && !char.IsWhiteSpace(content[0]);
@@ -403,6 +403,5 @@ namespace Meleze.Web.Razor
             }
             return content;
         }
-
     }
 }
